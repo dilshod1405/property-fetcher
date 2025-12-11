@@ -1,4 +1,4 @@
-module pf-service
+module pfservice
 
 go 1.23.0
 

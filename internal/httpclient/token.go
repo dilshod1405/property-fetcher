@@ -2,7 +2,7 @@ package httpclient
 
 import (
 	"fmt"
-    "pf-service/config"
+    "pfservice/config"
 
     "github.com/go-resty/resty/v2"
 )

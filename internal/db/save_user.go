@@ -2,7 +2,7 @@ package db
 
 import (
 	"errors"
-	"pf-service/internal/users"
+	"pfservice/internal/users"
 
 	"gorm.io/gorm"
 )

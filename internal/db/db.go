@@ -2,7 +2,7 @@ package db
 
 import (
 	"log"
-	"pf-service/config"
+	"pfservice/config"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"

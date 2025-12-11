@@ -1,7 +1,7 @@
 package db
 
 import (
-	"pf-service/internal/property"
+	"pfservice/internal/property"
 	"gorm.io/gorm"
 )
 

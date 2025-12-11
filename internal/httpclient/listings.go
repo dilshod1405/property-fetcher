@@ -2,8 +2,8 @@ package httpclient
 
 import (
 	"fmt"
-	"pf-service/config"
-	"pf-service/internal/property"
+	"pfservice/config"
+	"pfservice/internal/property"
 
 	"github.com/go-resty/resty/v2"
 )

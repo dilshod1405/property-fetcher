@@ -2,13 +2,13 @@ package main
 
 import (
 	"log"
-	"pf-service/config"
-	"pf-service/internal/area"
-	"pf-service/internal/db"
-	"pf-service/internal/httpclient"
-	"pf-service/internal/media"
-	"pf-service/internal/property"
-	"pf-service/internal/users"
+	"pfservice/config"
+	"pfservice/internal/area"
+	"pfservice/internal/db"
+	"pfservice/internal/httpclient"
+	"pfservice/internal/media"
+	"pfservice/internal/property"
+	"pfservice/internal/users"
 )
 
 func main() {
