@@ -17,14 +17,13 @@ func DownloadImage(url string, propertyID uint) (string, error) {
     }
     defer resp.Body.Close()
 
-    // Django media ichida papka
+    // Django media folder
     saveDir := filepath.Join(MediaRoot, "property_images")
     os.MkdirAll(saveDir, 0755)
 
-    // filename faqat basename bo‘ladi (DBga shu yoziladi)
+    // filename
     filename := filepath.Base(url)
 
-    // to‘liq path
     fullPath := filepath.Join(saveDir, filename)
 
     out, err := os.Create(fullPath)
@@ -38,6 +37,6 @@ func DownloadImage(url string, propertyID uint) (string, error) {
         return "", err
     }
 
-    // Django uchun xar doim "property_images/filename.jpg"
+    //"property_images/filename.jpg for django"
     return filepath.Join("property_images", filename), nil
 }

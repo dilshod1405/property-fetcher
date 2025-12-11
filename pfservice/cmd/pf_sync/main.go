@@ -57,7 +57,6 @@ func main() {
 			continue
 		}
 
-		// Convert savedUser.ID (uint) to *uint
 		userPointer := &savedUser.ID
 
 		// AREA
