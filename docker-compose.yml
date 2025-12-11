@@ -1,0 +1,11 @@
+services:
+  pf-sync:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./media/property_images:/var/www/mhp-api/media/property_images
+      - ./logs:/var/log
+    restart: unless-stopped

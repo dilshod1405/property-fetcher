@@ -1,0 +1,62 @@
+docker-build:
+  image: docker:cli
+  stage: build
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+    # bash
+    # - |
+    #   CONTEXT_NAME="mhp-context"
+    #   if docker context inspect $CONTEXT_NAME &> /dev/null; then
+    #       echo "Context '$CONTEXT_NAME' already exists."
+    #   else
+    #       echo "Context '$CONTEXT_NAME' does not exist. Creating..."
+    #       docker context create $CONTEXT_NAME
+    #       if [ $? -eq 0 ]; then
+    #           docker buildx create --name builderx --driver docker-container --use $CONTEXT_NAME
+    #           echo "Context '$CONTEXT_NAME' created successfully."
+    #       else
+    #           echo "Failed to create context '$CONTEXT_NAME'."
+    #           exit 1
+    #       fi
+    #   fi
+    # powershell
+    - |
+      $contextName = "mhp-api-context"
+      $contextExists = docker context inspect $contextName 2>$null
+      if ($contextExists) { Write-Output "Context '$contextName' already exists." }
+      else {
+          Write-Output "Context '$contextName' does not exist. Creating..."
+          docker context create $contextName
+          docker buildx create --name builderx --driver docker-container --use $contextName
+          Write-Output "Context '$contextName' created successfully."
+      }
+  script:
+    # bash
+    # - |
+      # if [[ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]]; then
+      #   tag=""
+      #   echo "Running on default branch '$CI_DEFAULT_BRANCH': tag = 'latest'"
+      # else
+      #   tag=":$CI_COMMIT_REF_NAME"
+      #   echo "Running on branch '$CI_COMMIT_BRANCH': tag = $tag"
+      # fi
+    # PowerShell script
+    - |
+      if ($env:CI_COMMIT_BRANCH -eq $env:CI_DEFAULT_BRANCH) {
+        $tag=""
+        Write-Host "Running on default branch '$env:CI_DEFAULT_BRANCH': tag = 'latest'"
+      } else {
+        $tag=":$env:CI_COMMIT_REF_NAME"
+        Write-Host "Running on branch '$env:CI_COMMIT_BRANCH': tag = $tag"
+      }
+    # - docker buildx prune -f
+    - docker buildx build --pull -t "$CI_REGISTRY_IMAGE${tag}" .
+    - docker buildx build --push -t "$CI_REGISTRY_IMAGE${tag}" --platform linux/amd64 .
+    # - docker buildx build --push -t "$CI_REGISTRY_IMAGE${tag}" --platform linux/amd64,linux/arm64 .
+  # Run this job in a branch where a Dockerfile exists
+  rules:
+    - if: $CI_COMMIT_BRANCH || $CI_COMMIT_TAG
+      exists:
+        - Dockerfile

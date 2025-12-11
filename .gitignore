@@ -1,0 +1,66 @@
+# Go build binaries
+pf-sync
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go build folders
+/bin/
+/build/
+/dist/
+
+# Go test binaries
+*.test
+
+# Logs
+*.log
+logs/
+log/
+pf-sync.log
+
+# Media / downloaded files
+media/
+media/property_images/
+
+# Temp & cache
+*.tmp
+*.temp
+*.cache
+.cache/
+tmp/
+temp/
+
+# Go workspaces
+go.work
+go.work.sum
+
+# Dependencies packages (generated)
+vendor/
+
+# IDE / Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker artifacts
+docker-compose.override.yml
+.env
+.env.*
+!.env.example
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Coverage files
+*.out
+
+# Node modules if any tooling exists
+node_modules/
+
+# Python (in case of mixed project)
+__pycache__/
+*.pyc
