@@ -2,7 +2,7 @@ package db
 
 import (
 	"errors"
-	"propertyfinder/internal/users"
+	"pf-service/internal/users"
 
 	"gorm.io/gorm"
 )

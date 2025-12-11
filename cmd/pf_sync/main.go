@@ -2,13 +2,13 @@ package main
 
 import (
 	"log"
-	"propertyfinder/config"
-	"propertyfinder/internal/area"
-	"propertyfinder/internal/db"
-	"propertyfinder/internal/httpclient"
-	"propertyfinder/internal/media"
-	"propertyfinder/internal/property"
-	"propertyfinder/internal/users"
+	"pf-service/config"
+	"pf-service/internal/area"
+	"pf-service/internal/db"
+	"pf-service/internal/httpclient"
+	"pf-service/internal/media"
+	"pf-service/internal/property"
+	"pf-service/internal/users"
 )
 
 func main() {

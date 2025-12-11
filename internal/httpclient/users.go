@@ -1,10 +1,10 @@
 package httpclient
 
 import (
-	"propertyfinder/internal/users"
+	"pf-service/internal/users"
 
 	"github.com/go-resty/resty/v2"
-	"propertyfinder/config"
+	"pf-service/config"
 )
 
 type PFUsersResponse struct {

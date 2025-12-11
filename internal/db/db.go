@@ -2,7 +2,7 @@ package db
 
 import (
 	"log"
-	"propertyfinder/config"
+	"pf-service/config"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
