@@ -3,59 +3,47 @@ docker-build:
   stage: build
   services:
     - docker:dind
+  variables:
+    DOCKER_DRIVER: overlay2
+    BUILDX_BUILDER: builderx
   before_script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
-    # bash
-    # - |
-    #   CONTEXT_NAME="pf-service-context"
-    #   if docker context inspect $CONTEXT_NAME &> /dev/null; then
-    #       echo "Context '$CONTEXT_NAME' already exists."
-    #   else
-    #       echo "Context '$CONTEXT_NAME' does not exist. Creating..."
-    #       docker context create $CONTEXT_NAME
-    #       if [ $? -eq 0 ]; then
-    #           docker buildx create --name builderx --driver docker-container --use $CONTEXT_NAME
-    #           echo "Context '$CONTEXT_NAME' created successfully."
-    #       else
-    #           echo "Failed to create context '$CONTEXT_NAME'."
-    #           exit 1
-    #       fi
-    #   fi
-    # powershell
+
+    # Create context if not exists
     - |
-      $contextName = "pf-service-context"
-      $contextExists = docker context inspect $contextName 2>$null
-      if ($contextExists) { Write-Output "Context '$contextName' already exists." }
-      else {
-          Write-Output "Context '$contextName' does not exist. Creating..."
-          docker context create $contextName
-          docker buildx create --name builderx --driver docker-container --use $contextName
-          Write-Output "Context '$contextName' created successfully."
-      }
+      CONTEXT_NAME="pf-service-context"
+      if docker context inspect "$CONTEXT_NAME" >/dev/null 2>&1; then
+        echo "Context '$CONTEXT_NAME' already exists."
+      else
+        echo "Creating docker context '$CONTEXT_NAME'..."
+        docker context create "$CONTEXT_NAME"
+      fi
+
+    # Create buildx builder if not exists
+    - |
+      if docker buildx inspect $BUILDX_BUILDER >/dev/null 2>&1; then
+        echo "Buildx builder already exists"
+        docker buildx use $BUILDX_BUILDER
+      else
+        echo "Creating buildx builder..."
+        docker buildx create --name $BUILDX_BUILDER --driver docker-container --use pf-service-context
+      fi
+
   script:
-    # bash
-    # - |
-      # if [[ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]]; then
-      #   tag=""
-      #   echo "Running on default branch '$CI_DEFAULT_BRANCH': tag = 'latest'"
-      # else
-      #   tag=":$CI_COMMIT_REF_NAME"
-      #   echo "Running on branch '$CI_COMMIT_BRANCH': tag = $tag"
-      # fi
-    # PowerShell script
+    # Compute tag (bash syntax!)
     - |
-      if ($env:CI_COMMIT_BRANCH -eq $env:CI_DEFAULT_BRANCH) {
-        $tag=""
-        Write-Host "Running on default branch '$env:CI_DEFAULT_BRANCH': tag = 'latest'"
-      } else {
-        $tag=":$env:CI_COMMIT_REF_NAME"
-        Write-Host "Running on branch '$env:CI_COMMIT_BRANCH': tag = $tag"
-      }
-    # - docker buildx prune -f
-    - docker buildx build --pull -t "$CI_REGISTRY_IMAGE${tag}" .
-    - docker buildx build --push -t "$CI_REGISTRY_IMAGE${tag}" --platform linux/amd64 .
-    # - docker buildx build --push -t "$CI_REGISTRY_IMAGE${tag}" --platform linux/amd64,linux/arm64 .
-  # Run this job in a branch where a Dockerfile exists
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
+        tag=":latest"
+        echo "Default branch detected. Tag = latest"
+      else
+        tag=":$CI_COMMIT_REF_NAME"
+        echo "Branch '$CI_COMMIT_BRANCH'. Tag = $tag"
+      fi
+
+    # Build multi-arch or single arch
+    - docker buildx build --pull -t "$CI_REGISTRY_IMAGE$tag" .
+    - docker buildx build --push -t "$CI_REGISTRY_IMAGE$tag" --platform linux/amd64 .
+
   rules:
     - if: $CI_COMMIT_BRANCH || $CI_COMMIT_TAG
       exists:
