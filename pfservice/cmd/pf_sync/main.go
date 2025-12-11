@@ -6,7 +6,7 @@ import (
 	"pfservice/internal/area"
 	"pfservice/internal/db"
 	"pfservice/internal/httpclient"
-	"pfservice/internal/media"
+	"pfservice/internal/media_download"
 	"pfservice/internal/property"
 	"pfservice/internal/users"
 )
