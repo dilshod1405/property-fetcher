@@ -7,7 +7,7 @@ docker-build:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
     # bash
     # - |
-    #   CONTEXT_NAME="mhp-context"
+    #   CONTEXT_NAME="pf-service-context"
     #   if docker context inspect $CONTEXT_NAME &> /dev/null; then
     #       echo "Context '$CONTEXT_NAME' already exists."
     #   else
@@ -23,7 +23,7 @@ docker-build:
     #   fi
     # powershell
     - |
-      $contextName = "mhp-api-context"
+      $contextName = "pf-service-context"
       $contextExists = docker context inspect $contextName 2>$null
       if ($contextExists) { Write-Output "Context '$contextName' already exists." }
       else {
