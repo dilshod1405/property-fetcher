@@ -1,55 +1,75 @@
 package media
 
 import (
-    "io"
-    "net/http"
-    "os"
-    "path/filepath"
-    "fmt"
-    "github.com/google/uuid"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 var MediaRoot = getMediaRoot()
 
 func getMediaRoot() string {
-    if v := os.Getenv("MEDIA_ROOT"); v != "" {
-        return v
-    }
-    return "/var/www/app/media"
+	if v := os.Getenv("MEDIA_ROOT"); v != "" {
+		return v
+	}
+	return "/mhp/media"
 }
 
+
 func DownloadImage(url string, propertyID uint) (string, error) {
-    resp, err := http.Get(url)
-    if err != nil {
-        return "", fmt.Errorf("http get failed: %w", err)
-    }
-    defer resp.Body.Close()
+	client := &http.Client{
+		Timeout: 20 * time.Second,
+	}
 
-    if resp.StatusCode != http.StatusOK {
-        return "", fmt.Errorf("bad status %d for url %s", resp.StatusCode, url)
-    }
+	resp, err := client.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("http get failed: %w", err)
+	}
+	defer resp.Body.Close()
 
-    saveDir := filepath.Join(MediaRoot, "property_images")
-    if err := os.MkdirAll(saveDir, 0755); err != nil {
-        return "", fmt.Errorf("mkdir failed: %w", err)
-    }
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("bad status %d for url %s", resp.StatusCode, url)
+	}
 
-    filename := filepath.Base(resp.Request.URL.Path)
-    if filename == "" || filename == "/" {
-        filename = uuid.New().String() + ".jpg"
-    }
+	saveDir := filepath.Join(MediaRoot, "property_images")
+	if err := os.MkdirAll(saveDir, 0755); err != nil {
+		return "", fmt.Errorf("mkdir failed %s: %w", saveDir, err)
+	}
 
-    fullPath := filepath.Join(saveDir, filename)
+	filename := filepath.Base(resp.Request.URL.Path)
+	if filename == "" || filename == "/" || len(filename) < 4 {
+		filename = uuid.New().String() + ".jpg"
+	}
 
-    out, err := os.Create(fullPath)
-    if err != nil {
-        return "", fmt.Errorf("file create failed %s: %w", fullPath, err)
-    }
-    defer out.Close()
+	fullPath := filepath.Join(saveDir, filename)
 
-    if _, err := io.Copy(out, resp.Body); err != nil {
-        return "", fmt.Errorf("file write failed %s: %w", fullPath, err)
-    }
+	out, err := os.Create(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("file create failed %s: %w", fullPath, err)
+	}
+	defer out.Close()
 
-    return filepath.Join("property_images", filename), nil
+	written, err := io.Copy(out, resp.Body)
+	if err != nil {
+		_ = os.Remove(fullPath)
+		return "", fmt.Errorf("file write failed %s: %w", fullPath, err)
+	}
+
+	if written == 0 {
+		_ = os.Remove(fullPath)
+		return "", fmt.Errorf("empty file downloaded from %s", url)
+	}
+
+	info, err := os.Stat(fullPath)
+	if err != nil || info.Size() == 0 {
+		_ = os.Remove(fullPath)
+		return "", fmt.Errorf("file verification failed %s", fullPath)
+	}
+
+	return filepath.Join("property_images", filename), nil
 }
