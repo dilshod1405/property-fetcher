@@ -65,7 +65,13 @@ func main() {
 		// CREATE/UPDATE PROPERTY
 		prop := listing.ToDjangoProperty(userPointer, areaID)
 
-		savedProp := db.SaveOrUpdateProperty(dbConn, prop, listing.Title.En, listing.Description.En)
+		savedProp, _ := db.SaveOrUpdateProperty(
+			dbConn,
+			prop,
+			listing.Title.En,
+			listing.Description.En,
+		)
+
 
 		// PROPERTY ID FOR IMAGES (uint, correct)
 		propIDuint := savedProp.ID

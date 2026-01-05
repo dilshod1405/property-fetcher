@@ -3,46 +3,62 @@ package db
 import (
 	"pfservice/internal/property"
 	"gorm.io/gorm"
+	"errors"
 )
 
 func SaveOrUpdateProperty(
-	dbConn *gorm.DB,
+	db *gorm.DB,
 	prop property.DjangoProperty,
 	title string,
-	description string,
-) property.DjangoProperty {
+	desc string,
+) (property.DjangoProperty, bool) {
 
 	var existing property.DjangoProperty
 
-	err := dbConn.Where("pf_id = ?", prop.PfID).First(&existing).Error
+	err := db.Where("pf_id = ?", prop.PfID).First(&existing).Error
 
-	if err == nil {
-		// UPDATE
-		prop.ID = existing.ID
-
-		dbConn.Model(&existing).Updates(prop)
-
-		// TRANSLATION UPDATE
-		dbConn.Model(&property.DjangoPropertyTranslation{}).
-			Where("master_id = ? AND language_code = 'en'", existing.ID).
-			Updates(map[string]interface{}{
-				"title":       title,
-				"description": description,
-			})
-
-		return existing
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		db.Create(&prop)
+		property.SaveEnglishTranslation(db, prop.ID, title, "", desc)
+		return prop, true
 	}
 
-	// CREATE NEW PROPERTY
-	dbConn.Create(&prop)
+	if err != nil {
+		panic(err)
+	}
 
-	// INSERT TRANSLATION
-	dbConn.Create(&property.DjangoPropertyTranslation{
-		MasterID:     prop.ID,
-		LanguageCode: "en",
-		Title:        title,
-		Description:  description,
-	})
+	updates := map[string]interface{}{}
 
-	return prop
+	if existing.Price != prop.Price {
+		updates["price"] = prop.Price
+	}
+	if existing.Bedrooms != prop.Bedrooms {
+		updates["bedrooms"] = prop.Bedrooms
+	}
+	if existing.Bathrooms != prop.Bathrooms {
+		updates["bathrooms"] = prop.Bathrooms
+	}
+	if existing.SquareSqft != prop.SquareSqft {
+		updates["square_sqft"] = prop.SquareSqft
+	}
+	if existing.StatusType != prop.StatusType {
+		updates["status_type"] = prop.StatusType
+	}
+	if existing.ConstructionType != prop.ConstructionType {
+		updates["construction_type"] = prop.ConstructionType
+	}
+	if !existing.IsVisible {
+		updates["is_visible"] = true
+	}
+
+	changed := len(updates) > 0
+
+	if changed {
+		db.Model(&existing).Updates(updates)
+	}
+
+	property.SaveEnglishTranslation(db, existing.ID, title, "", desc)
+
+	return existing, changed
 }
+
