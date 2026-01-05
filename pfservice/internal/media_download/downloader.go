@@ -7,7 +7,14 @@ import (
     "path/filepath"
 )
 
-const MediaRoot = "/var/www/mhp-api/media"
+var MediaRoot = getMediaRoot()
+
+func getMediaRoot() string {
+    if v := os.Getenv("MEDIA_ROOT"); v != "" {
+        return v
+    }
+    return "/var/www/app/media"
+}
 
 func DownloadImage(url string, propertyID uint) (string, error) {
     resp, err := http.Get(url)
