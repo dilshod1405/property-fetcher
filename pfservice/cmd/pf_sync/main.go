@@ -20,20 +20,13 @@ func main() {
 
 	dbConn := db.Connect()
 
-	// Check for missing images and clean up database records
+	// Check for missing images (read-only check, no deletion)
 	log.Println("Checking existing images...")
 	missingImages, err := db.CheckMissingImages(dbConn)
 	if err != nil {
 		log.Printf("Warning: Failed to check missing images: %v", err)
 	} else if len(missingImages) > 0 {
-		log.Printf("Found %d missing images in database. Cleaning up invalid records...", len(missingImages))
-		for _, missing := range missingImages {
-			err := db.DeletePropertyImage(dbConn, missing.ImageID)
-			if err != nil {
-				log.Printf("Failed to delete missing image record %d: %v", missing.ImageID, err)
-			}
-		}
-		log.Printf("Cleaned up %d invalid image records", len(missingImages))
+		log.Printf("Found %d missing images in database. Will attempt to re-download during sync...", len(missingImages))
 	} else {
 		log.Println("All existing images verified - no missing files found")
 	}
@@ -96,7 +89,36 @@ func main() {
 		// PROPERTY ID FOR IMAGES (uint, correct)
 		propIDuint := savedProp.ID
 
-		// SAVE IMAGES
+		// Check existing images for this property and re-download missing ones
+		var existingImages []property.DjangoPropertyImage
+		dbConn.Where("property_id = ?", propIDuint).Find(&existingImages)
+		for _, existingImg := range existingImages {
+			if !media.ImageExists(existingImg.Image) {
+				log.Printf("Existing image missing for property %d: %s. Attempting to re-download...", propIDuint, existingImg.Image)
+				// Try to find matching URL in current listing and re-download
+				for _, listingImg := range listing.Media.Images {
+					if listingImg.Original.URL != "" {
+						localPath, err := media.DownloadImage(listingImg.Original.URL, propIDuint)
+						if err == nil && media.ImageExists(localPath) {
+							// Check if this path already exists in DB
+							var dupImg property.DjangoPropertyImage
+							err = dbConn.Where("property_id = ? AND image = ?", propIDuint, localPath).First(&dupImg).Error
+							if errors.Is(err, gorm.ErrRecordNotFound) {
+								// Save new image record
+								db.SavePropertyImage(dbConn, property.DjangoPropertyImage{
+									PropertyID: propIDuint,
+									Image:      localPath,
+								})
+								log.Printf("Re-downloaded missing image for property %d: %s", propIDuint, localPath)
+							}
+							break // Found and downloaded one image
+						}
+					}
+				}
+			}
+		}
+
+		// SAVE NEW IMAGES
 		for _, img := range listing.Media.Images {
 			url := img.Original.URL
 			if url == "" {
