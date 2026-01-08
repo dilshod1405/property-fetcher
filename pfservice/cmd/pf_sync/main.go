@@ -100,16 +100,13 @@ func main() {
 					if listingImg.Original.URL != "" {
 						localPath, err := media.DownloadImage(listingImg.Original.URL, propIDuint)
 						if err == nil && media.ImageExists(localPath) {
-							// Check if this path already exists in DB
-							var dupImg property.DjangoPropertyImage
-							err = dbConn.Where("property_id = ? AND image = ?", propIDuint, localPath).First(&dupImg).Error
-							if errors.Is(err, gorm.ErrRecordNotFound) {
-								// Save new image record
-								db.SavePropertyImage(dbConn, property.DjangoPropertyImage{
-									PropertyID: propIDuint,
-									Image:      localPath,
-								})
-								log.Printf("Re-downloaded missing image for property %d: %s", propIDuint, localPath)
+							// Update existing record with new path instead of creating duplicate
+							existingImg.Image = localPath
+							err = dbConn.Save(&existingImg).Error
+							if err != nil {
+								log.Printf("Failed to update image record for property %d: %v", propIDuint, err)
+							} else {
+								log.Printf("Re-downloaded and updated missing image for property %d: %s", propIDuint, localPath)
 							}
 							break // Found and downloaded one image
 						}
