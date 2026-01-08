@@ -6,7 +6,7 @@ import (
 	"pfservice/internal/area"
 	"pfservice/internal/db"
 	"pfservice/internal/httpclient"
-	"pfservice/internal/media_download"
+	media "pfservice/internal/media_download"
 	"pfservice/internal/property"
 	"pfservice/internal/users"
 )
@@ -72,7 +72,6 @@ func main() {
 			listing.Description.En,
 		)
 
-
 		// PROPERTY ID FOR IMAGES (uint, correct)
 		propIDuint := savedProp.ID
 
@@ -83,16 +82,22 @@ func main() {
 				continue
 			}
 
+			// DownloadImage already has retry logic built-in
+			// It will retry up to IMAGE_DOWNLOAD_MAX_RETRIES times (default: 3)
 			localPath, err := media.DownloadImage(url, propIDuint)
 			if err != nil {
-				log.Println("Image download error:", err)
+				log.Printf("Image download failed after retries for property %d, URL: %s, error: %v", propIDuint, url, err)
 				continue
 			}
 
-			db.SavePropertyImage(dbConn, property.DjangoPropertyImage{
+			err = db.SavePropertyImage(dbConn, property.DjangoPropertyImage{
 				PropertyID: propIDuint,
 				Image:      localPath,
 			})
+			if err != nil {
+				log.Printf("Failed to save property image to database for property %d, path: %s, error: %v", propIDuint, localPath, err)
+				continue
+			}
 		}
 	}
 

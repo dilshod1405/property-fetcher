@@ -24,7 +24,7 @@ func SaveOrUpdateProperty(
 	}
 
 	if err != nil {
-		panic(err)
+		return existing, false
 	}
 
 	updates := map[string]interface{}{}

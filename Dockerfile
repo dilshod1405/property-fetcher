@@ -10,8 +10,10 @@ RUN go mod download
 # Copy source
 COPY pfservice/ .
 
-# Build static binary
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/pf-sync ./cmd/pf_sync
+# Build static binaries
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/pf-sync ./cmd/pf_sync && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/pf-repair ./cmd/pf_repair && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/pf-check ./cmd/pf_check
 
 # 2) Runtime stage
 FROM alpine:3.19
@@ -21,6 +23,8 @@ RUN apk add --no-cache ca-certificates tzdata busybox
 WORKDIR /app
 
 COPY --from=builder /app/pf-sync /app/pf-sync
+COPY --from=builder /app/pf-repair /app/pf-repair
+COPY --from=builder /app/pf-check /app/pf-check
 
 # Log directory (will be mounted from host)
 RUN mkdir -p /var/log && \

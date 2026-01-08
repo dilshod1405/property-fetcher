@@ -33,6 +33,10 @@ func FetchListings(token string, page int) (*ListingsResponse, error) {
 		return nil, err
 	}
 
+	if res.StatusCode() >= 300 {
+		return nil, fmt.Errorf("listings API error: status %d, body: %s", res.StatusCode(), res.String())
+	}
+
 	fmt.Println("STATUS:", res.Status())
 	fmt.Println("BODY:", res.String())
 
