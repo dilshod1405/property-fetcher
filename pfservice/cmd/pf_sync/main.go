@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"pfservice/config"
 	"pfservice/internal/area"
@@ -9,6 +10,8 @@ import (
 	media "pfservice/internal/media_download"
 	"pfservice/internal/property"
 	"pfservice/internal/users"
+
+	"gorm.io/gorm"
 )
 
 func main() {
@@ -16,6 +19,24 @@ func main() {
 	log.Println("PF SYNC STARTED...")
 
 	dbConn := db.Connect()
+
+	// Check for missing images and clean up database records
+	log.Println("Checking existing images...")
+	missingImages, err := db.CheckMissingImages(dbConn)
+	if err != nil {
+		log.Printf("Warning: Failed to check missing images: %v", err)
+	} else if len(missingImages) > 0 {
+		log.Printf("Found %d missing images in database. Cleaning up invalid records...", len(missingImages))
+		for _, missing := range missingImages {
+			err := db.DeletePropertyImage(dbConn, missing.ImageID)
+			if err != nil {
+				log.Printf("Failed to delete missing image record %d: %v", missing.ImageID, err)
+			}
+		}
+		log.Printf("Cleaned up %d invalid image records", len(missingImages))
+	} else {
+		log.Println("All existing images verified - no missing files found")
+	}
 
 	token, err := httpclient.GetJWTToken()
 	if err != nil {
@@ -87,6 +108,25 @@ func main() {
 			localPath, err := media.DownloadImage(url, propIDuint)
 			if err != nil {
 				log.Printf("Image download failed after retries for property %d, URL: %s, error: %v", propIDuint, url, err)
+				continue
+			}
+
+			// Verify image file actually exists before saving to database
+			if !media.ImageExists(localPath) {
+				log.Printf("Downloaded image file does not exist at %s, skipping database save", localPath)
+				continue
+			}
+
+			// Check if this image path already exists in database for this property
+			var existingImg property.DjangoPropertyImage
+			err = dbConn.Where("property_id = ? AND image = ?", propIDuint, localPath).First(&existingImg).Error
+			if err == nil {
+				// Image already exists in database, skip
+				continue
+			}
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				// Some other error occurred, log and continue
+				log.Printf("Error checking existing image for property %d: %v", propIDuint, err)
 				continue
 			}
 
