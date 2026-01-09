@@ -9,6 +9,7 @@ import (
 	"pfservice/internal/httpclient"
 	media "pfservice/internal/media_download"
 	"pfservice/internal/property"
+	"pfservice/internal/reporting"
 	"pfservice/internal/users"
 
 	"gorm.io/gorm"
@@ -17,6 +18,11 @@ import (
 func main() {
 	config.LoadConfig()
 	log.Println("PF SYNC STARTED...")
+
+	// Initialize statistics
+	stats := reporting.ReportStats{
+		Date: reporting.GetTashkentTime(),
+	}
 
 	dbConn := db.Connect()
 
@@ -65,10 +71,23 @@ func main() {
 
 		// SAVE USER
 		djUser := pfAgent.ToDjangoUser()
+
+		// Check if user exists before saving to track creation/update
+		var existingUser users.DjangoUser
+		userExists := dbConn.Where("email = ?", djUser.Email).First(&existingUser).Error == nil
+
 		savedUser, err := db.SaveOrUpdateUser(dbConn, djUser)
 		if err != nil {
 			log.Println("User save error:", err)
+			stats.Errors++
 			continue
+		}
+
+		// Track user creation/update
+		if !userExists {
+			stats.UsersCreated++
+		} else {
+			stats.UsersUpdated++
 		}
 
 		userPointer := &savedUser.ID
@@ -79,12 +98,23 @@ func main() {
 		// CREATE/UPDATE PROPERTY
 		prop := listing.ToDjangoProperty(userPointer, areaID)
 
-		savedProp, _ := db.SaveOrUpdateProperty(
+		// Check if property exists before saving to track creation/update
+		var existingProp property.DjangoProperty
+		propExists := dbConn.Where("pf_id = ?", prop.PfID).First(&existingProp).Error == nil
+
+		savedProp, changed := db.SaveOrUpdateProperty(
 			dbConn,
 			prop,
 			listing.Title.En,
 			listing.Description.En,
 		)
+
+		// Track property creation/update
+		if !propExists {
+			stats.PropertiesCreated++
+		} else if changed {
+			stats.PropertiesUpdated++
+		}
 
 		// PROPERTY ID FOR IMAGES (uint, correct)
 		propIDuint := savedProp.ID
@@ -105,8 +135,10 @@ func main() {
 							err = dbConn.Save(&existingImg).Error
 							if err != nil {
 								log.Printf("Failed to update image record for property %d: %v", propIDuint, err)
+								stats.Errors++
 							} else {
 								log.Printf("Re-downloaded and updated missing image for property %d: %s", propIDuint, localPath)
+								stats.ImagesDownloaded++
 							}
 							break // Found and downloaded one image
 						}
@@ -127,6 +159,7 @@ func main() {
 			localPath, err := media.DownloadImage(url, propIDuint)
 			if err != nil {
 				log.Printf("Image download failed after retries for property %d, URL: %s, error: %v", propIDuint, url, err)
+				stats.Errors++
 				continue
 			}
 
@@ -155,10 +188,21 @@ func main() {
 			})
 			if err != nil {
 				log.Printf("Failed to save property image to database for property %d, path: %s, error: %v", propIDuint, localPath, err)
+				stats.Errors++
 				continue
 			}
+
+			stats.ImagesDownloaded++
 		}
 	}
 
+	// Write report
+	stats.Date = reporting.GetTashkentTime()
+	if err := reporting.WriteReport(stats); err != nil {
+		log.Printf("Warning: Failed to write report: %v", err)
+	}
+
 	log.Println("IMPORT FINISHED SUCCESSFULLY")
+	log.Printf("Summary: Created %d properties, Updated %d properties, Downloaded %d images, Created %d users, Updated %d users, Errors: %d",
+		stats.PropertiesCreated, stats.PropertiesUpdated, stats.ImagesDownloaded, stats.UsersCreated, stats.UsersUpdated, stats.Errors)
 }
