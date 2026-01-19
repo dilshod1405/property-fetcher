@@ -1,0 +1,16 @@
+# GitLab CI/CD Configuration to exclude README.md from GitLab repository
+# Add this to your .gitlab-ci.yml or merge with existing CI config
+
+# This script removes README.md before pushing to GitLab
+# README.md will only be visible on GitHub
+
+before_script:
+  - |
+    if [ "$CI_COMMIT_REF_NAME" != "github-sync" ]; then
+      # Remove README.md from GitLab repository
+      git rm --cached README.md 2>/dev/null || true
+      git commit -m "chore: exclude README.md from GitLab" --allow-empty || true
+    fi
+
+# Alternative: Use sparse-checkout
+# This is more complex but allows selective file inclusion

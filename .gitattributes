@@ -1,0 +1,10 @@
+# Git Attributes Configuration
+# This file controls how Git handles files in this repository
+
+# Exclude README.md from GitLab exports (but keep it for GitHub)
+# When exporting/pushing to GitLab, README.md will be excluded
+# When pushing to GitHub, README.md will be included normally
+README.md export-ignore
+
+# Alternative: Use sparse-checkout for GitLab
+# This requires GitLab CI/CD configuration to use sparse-checkout
