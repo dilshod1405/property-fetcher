@@ -143,7 +143,7 @@ func main() {
 			}
 
 			// Download image
-			localPath, err := media.DownloadImage(url, propertyID)
+			localPath, err := media.DownloadImage(url, propertyID, i)
 			if err != nil {
 				log.Printf("Failed to download image for property %d, URL: %s, error: %v", propertyID, url, err)
 				failedCount++

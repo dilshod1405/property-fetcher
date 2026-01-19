@@ -410,7 +410,7 @@ func TestIntegrationSyncFlow(t *testing.T) {
 
 			// Make full URL for mock server
 			fullURL := mockServer.URL + url
-			localPath, err := media.DownloadImage(fullURL, propIDuint)
+			localPath, err := media.DownloadImage(fullURL, propIDuint, imageCount)
 			if err != nil {
 				t.Logf("Image download error (may be expected in test): %v", err)
 				continue
@@ -511,7 +511,7 @@ func TestIntegrationMediaPathConfiguration(t *testing.T) {
 	}))
 	defer server.Close()
 
-	localPath, err := media.DownloadImage(server.URL+"/test.jpg", 123)
+	localPath, err := media.DownloadImage(server.URL+"/test.jpg", 123, 0)
 	if err != nil {
 		t.Fatalf("Failed to download image: %v", err)
 	}

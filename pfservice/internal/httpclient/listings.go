@@ -37,8 +37,24 @@ func FetchListings(token string, page int) (*ListingsResponse, error) {
 		return nil, fmt.Errorf("listings API error: status %d, body: %s", res.StatusCode(), res.String())
 	}
 
-	fmt.Println("STATUS:", res.Status())
-	fmt.Println("BODY:", res.String())
+	// Debug: Log first listing's media structure to understand API response
+	if len(resp.Results) > 0 {
+		firstListing := resp.Results[0]
+		fmt.Printf("DEBUG: First listing ID: %s\n", firstListing.ID)
+		fmt.Printf("DEBUG: Media.Images count: %d\n", len(firstListing.Media.Images))
+		if len(firstListing.Media.Images) > 0 {
+			fmt.Printf("DEBUG: First image structure - URL: %s\n", firstListing.Media.Images[0].Original.URL)
+		} else {
+			fmt.Printf("DEBUG: No images in first listing, checking raw response...\n")
+			// Log a sample of the response to see structure
+			bodyStr := res.String()
+			if len(bodyStr) > 500 {
+				fmt.Printf("DEBUG: Response sample (first 500 chars): %s\n", bodyStr[:500])
+			} else {
+				fmt.Printf("DEBUG: Full response: %s\n", bodyStr)
+			}
+		}
+	}
 
 	return &resp, nil
 }

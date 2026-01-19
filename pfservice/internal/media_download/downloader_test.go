@@ -36,15 +36,24 @@ func TestDownloadImage(t *testing.T) {
 
 	// Test downloading image
 	propertyID := uint(123)
-	localPath, err := DownloadImage(server.URL+"/test-image.jpg", propertyID)
+	localPath, err := DownloadImage(server.URL+"/test-image.jpg", propertyID, 0)
 	if err != nil {
 		t.Fatalf("Failed to download image: %v", err)
 	}
 
 	// Verify path format
-	expectedPath := "property_images/test-image.jpg"
-	if localPath != expectedPath {
-		t.Errorf("Expected path %s, got %s", expectedPath, localPath)
+	if !filepath.HasPrefix(localPath, "property_images/") {
+		t.Errorf("Expected path to start with property_images/, got %s", localPath)
+	}
+	
+	// Verify filename format (should be unique, either UUID or pf_{id}_{index}_{hash}.jpg)
+	actualFilename := filepath.Base(localPath)
+	if actualFilename == "" {
+		t.Errorf("Filename should not be empty")
+	}
+	// Filename should have .jpg extension
+	if !strings.HasSuffix(actualFilename, ".jpg") {
+		t.Errorf("Filename should end with .jpg, got %s", actualFilename)
 	}
 
 	// Verify file exists
@@ -77,7 +86,7 @@ func TestDownloadImageWithInvalidURL(t *testing.T) {
 	}()
 
 	// Test with invalid URL
-	_, err = DownloadImage("http://invalid-url-that-does-not-exist-12345.com/image.jpg", 123)
+	_, err = DownloadImage("http://invalid-url-that-does-not-exist-12345.com/image.jpg", 123, 0)
 	if err == nil {
 		t.Error("Expected error for invalid URL")
 	}
@@ -102,7 +111,7 @@ func TestDownloadImageWithErrorResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err = DownloadImage(server.URL+"/not-found.jpg", 123)
+	_, err = DownloadImage(server.URL+"/not-found.jpg", 123, 0)
 	if err == nil {
 		t.Error("Expected error for 404 response")
 	}
@@ -128,7 +137,7 @@ func TestDownloadImageWithEmptyResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err = DownloadImage(server.URL+"/empty.jpg", 123)
+	_, err = DownloadImage(server.URL+"/empty.jpg", 123, 0)
 	if err == nil {
 		t.Error("Expected error for empty response")
 	}
@@ -157,7 +166,7 @@ func TestDownloadImageWithUUIDFallback(t *testing.T) {
 	defer server.Close()
 
 	// Test with URL that has no filename
-	localPath, err := DownloadImage(server.URL, 123)
+	localPath, err := DownloadImage(server.URL, 123, 0)
 	if err != nil {
 		t.Fatalf("Failed to download image: %v", err)
 	}
@@ -248,7 +257,7 @@ func TestDownloadImageWithRetry(t *testing.T) {
 
 	// Test downloading image with retry
 	propertyID := uint(123)
-	localPath, err := DownloadImage(server.URL+"/test-retry.jpg", propertyID)
+	localPath, err := DownloadImage(server.URL+"/test-retry.jpg", propertyID, 0)
 	if err != nil {
 		t.Fatalf("Failed to download image after retries: %v", err)
 	}
@@ -309,7 +318,7 @@ func TestDownloadImageWithRetryFailure(t *testing.T) {
 
 	// Test downloading image - should fail after all retries
 	propertyID := uint(123)
-	_, err = DownloadImage(server.URL+"/test-fail.jpg", propertyID)
+	_, err = DownloadImage(server.URL+"/test-fail.jpg", propertyID, 0)
 	if err == nil {
 		t.Error("Expected error after all retries failed")
 	}
@@ -334,7 +343,7 @@ func TestDownloadImageWithEmptyURL(t *testing.T) {
 	}()
 
 	// Test with empty URL - should not retry
-	_, err = DownloadImage("", 123)
+	_, err = DownloadImage("", 123, 0)
 	if err == nil {
 		t.Error("Expected error for empty URL")
 	}
@@ -397,7 +406,7 @@ func TestDownloadImageWithTimeout(t *testing.T) {
 
 	// Test downloading image - should timeout
 	start := time.Now()
-	_, err = DownloadImage(server.URL+"/timeout-test.jpg", 123)
+	_, err = DownloadImage(server.URL+"/timeout-test.jpg", 123, 0)
 	duration := time.Since(start)
 
 	if err == nil {

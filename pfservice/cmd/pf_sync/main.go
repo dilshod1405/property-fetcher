@@ -126,9 +126,9 @@ func main() {
 			if !media.ImageExists(existingImg.Image) {
 				log.Printf("Existing image missing for property %d: %s. Attempting to re-download...", propIDuint, existingImg.Image)
 				// Try to find matching URL in current listing and re-download
-				for _, listingImg := range listing.Media.Images {
+				for imgIdx, listingImg := range listing.Media.Images {
 					if listingImg.Original.URL != "" {
-						localPath, err := media.DownloadImage(listingImg.Original.URL, propIDuint)
+						localPath, err := media.DownloadImage(listingImg.Original.URL, propIDuint, imgIdx)
 						if err == nil && media.ImageExists(localPath) {
 							// Update existing record with new path instead of creating duplicate
 							existingImg.Image = localPath
@@ -148,15 +148,26 @@ func main() {
 		}
 
 		// SAVE NEW IMAGES
-		for _, img := range listing.Media.Images {
+		// Debug: Log media structure to understand API response
+		if len(listing.Media.Images) == 0 {
+			log.Printf("No images found in listing %s (pf_id: %s)", listing.ID, prop.PfID)
+		} else {
+			log.Printf("Found %d images in listing %s", len(listing.Media.Images), listing.ID)
+		}
+
+		for idx, img := range listing.Media.Images {
 			url := img.Original.URL
 			if url == "" {
+				log.Printf("Empty URL for image %d in listing %s", idx, listing.ID)
 				continue
 			}
 
+			log.Printf("Downloading image %d for property %d: %s", idx+1, propIDuint, url)
+
 			// DownloadImage already has retry logic built-in
 			// It will retry up to IMAGE_DOWNLOAD_MAX_RETRIES times (default: 3)
-			localPath, err := media.DownloadImage(url, propIDuint)
+			// Pass image index to create unique filenames
+			localPath, err := media.DownloadImage(url, propIDuint, idx)
 			if err != nil {
 				log.Printf("Image download failed after retries for property %d, URL: %s, error: %v", propIDuint, url, err)
 				stats.Errors++
